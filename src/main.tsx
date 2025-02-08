@@ -6,7 +6,8 @@ import { Provider } from 'react-redux';
 import { ConfigProvider } from '@arco-design/web-react';
 import zhCN from '@arco-design/web-react/es/locale/zh-CN';
 import enUS from '@arco-design/web-react/es/locale/en-US';
-import { BrowserRouter, Switch, Route } from 'react-router-dom';
+import { BrowserRouter, Switch, Route, HashRouter } from 'react-router-dom';
+import { registerMicroApps, start } from 'qiankun';
 import axios from 'axios';
 import rootReducer from './store';
 import PageLayout from './layout';
@@ -18,6 +19,10 @@ import useStorage from './utils/useStorage';
 import './mock';
 
 const store = createStore(rootReducer);
+
+export const vue2AppEntry = import.meta.env.VITE_VUE2_CHILD_ENTRY;
+export const reactAppEntry = import.meta.env.VITE_REACT18_CHILD_ENTRY;
+export const viteAppEntry = import.meta.env.VITE_VITE_CHILD_ENTRY;
 
 function Index() {
   const [lang, setLang] = useStorage('arco-lang', 'en-US');
@@ -67,7 +72,7 @@ function Index() {
   };
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <ConfigProvider
         locale={getArcoLocale()}
         componentConfig={{
@@ -91,8 +96,64 @@ function Index() {
           </GlobalContext.Provider>
         </Provider>
       </ConfigProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
+
+// registerMicroApps(
+//   [
+//     {
+//       name: 'vite-app',
+//       entry: 'http://localhost:8093',
+//       container: '#child-app',
+//       activeRule: '#/viteApp',
+//     },
+//     {
+//       name: 'react-app',
+//       entry: 'http://localhost:8092',
+//       container: '#child-app',
+//       activeRule: '#/reactApp',
+//     },
+//     {
+//       name: 'vue-app',
+//       entry: 'http://localhost:8091',
+//       container: '#child-app',
+//       activeRule: '#/vue2App'
+//     },
+//     {
+//       name: 'acro-pro-all',
+//       entry: 'http://localhost:3000',
+//       container: '#child-app',
+//       activeRule: '#/acroProAll'
+//     }
+//   ],
+//   {
+//     beforeLoad: [
+//       (app) => {
+//         console.log('[主应用] before load', app.name);
+//         return Promise.resolve();
+//       },
+//     ],
+//     beforeMount: [
+//       (app) => {
+//         console.log('[主应用] before mount', app.name);
+//         return Promise.resolve();
+//       },
+//     ],
+//     afterMount: [
+//       (app) => {
+//         console.log('[主应用] after mount', app.name);
+//         return Promise.resolve();
+//       },
+//     ],
+//   }
+// );
+
+// start({
+//   prefetch: true,
+//   sandbox: {
+//     experimentalStyleIsolation: true,
+//   },
+// });
 
 ReactDOM.render(<Index />, document.getElementById('root'));

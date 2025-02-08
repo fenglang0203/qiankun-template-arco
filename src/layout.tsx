@@ -20,6 +20,7 @@ import getUrlParams from './utils/getUrlParams';
 import lazyload from './utils/lazyload';
 import { GlobalState } from './store';
 import styles from './style/layout.module.less';
+import { registerMicroApps, start, loadMicroApp } from 'qiankun';
 
 const MenuItem = Menu.Item;
 const SubMenu = Menu.SubMenu;
@@ -44,7 +45,9 @@ function getFlattenRoutes(routes) {
   function travel(_routes) {
     _routes.forEach((route) => {
       if (route.key && !route.children) {
-        route.component = lazyload(mod[`./pages/${route.key}/index.tsx`]);
+        if (!route.subApp) {
+          route.component = lazyload(mod[`./pages/${route.key}/index.tsx`]);
+        }
         res.push(route);
       } else if (isArray(route.children) && route.children.length) {
         travel(route.children);
@@ -92,13 +95,19 @@ function PageLayout() {
 
   function onClickMenuItem(key) {
     const currentRoute = flattenRoutes.find((r) => r.key === key);
-    const component = currentRoute.component;
-    const preload = component.preload();
-    NProgress.start();
-    preload.then(() => {
+    if (currentRoute.subApp) {
+      NProgress.start();
       history.push(currentRoute.path ? currentRoute.path : `/${key}`);
       NProgress.done();
-    });
+    } else {
+      const component = currentRoute.component;
+      const preload = component.preload();
+      NProgress.start();
+      preload.then(() => {
+        history.push(currentRoute.path ? currentRoute.path : `/${key}`);
+        NProgress.done();
+      });
+    }
   }
 
   function toggleCollapse() {
@@ -180,6 +189,92 @@ function PageLayout() {
     setBreadCrumb(routeConfig || []);
     updateMenuStatus();
   }, [pathname]);
+
+  useEffect(() => {
+    if (userLoading) return;
+    registerMicroApps(
+      [
+        {
+          name: 'vite-app',
+          entry: 'http://localhost:8093',
+          container: '#child-app',
+          activeRule: '#/viteApp',
+        },
+        {
+          name: 'react-app',
+          entry: 'http://localhost:8092',
+          container: '#child-app',
+          activeRule: '#/reactApp',
+        },
+        {
+          name: 'vue-app',
+          entry: 'http://localhost:8091',
+          container: '#child-app',
+          activeRule: '#/vue2App',
+        },
+        // {
+        //   name: 'saber-app',
+        //   entry: 'http://localhost:2888',
+        //   container: '#child-app',
+        //   activeRule: '#/viteSaberApp'
+        // },
+        {
+          name: 'acro-pro-all',
+          entry: 'http://localhost:3000',
+          container: '#child-app',
+          activeRule: '#/acroProAll',
+        },
+      ],
+      {
+        beforeLoad: [
+          (app) => {
+            console.log('[主应用] before load', app.name);
+            return Promise.resolve();
+          },
+        ],
+        beforeMount: [
+          (app) => {
+            console.log('[主应用] before mount', app.name);
+            return Promise.resolve();
+          },
+        ],
+        afterMount: [
+          (app) => {
+            console.log('[主应用] after mount', app.name);
+            return Promise.resolve();
+          },
+        ],
+      }
+    );
+
+    start({
+      prefetch: true,
+      sandbox: {
+        experimentalStyleIsolation: true,
+      },
+    });
+  }, [userLoading]);
+
+  // 监听路由变化
+  // useEffect(() => {
+  //   // 监听路径变化
+  //   const unlisten = history.listen((location) => {
+  //     console.log('路径变化了：', location.pathname);
+
+  //     // 如果路由是/viteApp，激活子应用
+  //     if (location.pathname === '/viteApp') {
+  //       // setActiveApp('viteApp');
+  //       loadMicroApp({
+  //         name: 'vite-app',
+  //         entry: 'http://localhost:8093',
+  //         container: '#child-app',
+  //       });
+  //     }
+  //   });
+
+  //   return () => unlisten(); // 清理监听
+  // }, [history]);
+
   return (
     <Layout className={styles.layout}>
       <div
@@ -236,8 +331,18 @@ function PageLayout() {
                 </div>
               )}
               <Content>
+                <div id="child-app" />
                 <Switch>
                   {flattenRoutes.map((route, index) => {
+                    if (route.subApp) {
+                      return (
+                        <Route
+                          key={index}
+                          path={`/${route.key}`}
+                          render={() => null}
+                        />
+                      );
+                    }
                     return (
                       <Route
                         key={index}
@@ -246,6 +351,13 @@ function PageLayout() {
                       />
                     );
                   })}
+                  {/* <Route
+                    key="viteApp"
+                    path='#/viteApp'
+                    render={() => <div
+                      id="child-app"
+                    />}
+                  /> */}
                   <Route exact path="/">
                     <Redirect to={`/${defaultRoute}`} />
                   </Route>
